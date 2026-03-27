@@ -34,6 +34,7 @@ endif ()
 # NOM = Noah-OWP-Modular
 set(NOM_LIB_NAME_CMAKE noah_owp_modular_bmi)
 set(NOM_STANDALONE_EXE_NAME noah_owp_modular.exe)
+set(NOM_TESTBMI_NAME noah_owp_testbmi.exe)
 set(NOM_LIB_DESC_CMAKE "External Noah-OWP-Modular Shared Library")
 set(BMI_SOURCES_DIR bmi/)
 set(DRIVER_SOURCE_DIR driver/)
@@ -43,6 +44,7 @@ set(RUN_SOURCE_DIR run/)
 # Create variables with the source files needed in different contexts
 set(BMI_SOURCES "bmi/bmi.f90" "bmi/bmi_noahowp.f90")
 set(DRIVER_SOURCES "driver/AsciiReadModule.f90" "driver/NoahModularDriver.f90" "driver/OutputModule.f90")
+set(TESTBMI_SOURCES "test/noahowp_driver_test.f90" "driver/AsciiReadModule.f90" "driver/OutputModule.f90")
 set(MODEL_SOURCES "src/AlbedoModule.f90" "src/AtmProcessing.f90" "src/CanopyWaterModule.f90" 
     "src/DateTimeUtilsModule.f90" "src/DomainType.f90" "src/EnergyModule.f90" 
     "src/EnergyType.f90" "src/ErrorCheckModule.f90" "src/EtFluxModule.f90"
@@ -67,6 +69,10 @@ if (BMI_SHARED_LIB)
 	target_compile_options(${NOM_LIB_NAME_CMAKE} PUBLIC -fPIC)
         target_link_libraries(${NOM_LIB_NAME_CMAKE} PUBLIC iso_c_bmi)
         set_target_properties(${NOM_LIB_NAME_CMAKE} PROPERTIES VERSION ${PROJECT_VERSION})
+	# bmi test
+	add_executable(${NOM_TESTBMI_NAME} ${TESTBMI_SOURCES} ${MODEL_SOURCES} ${BMI_SOURCES})
+	target_compile_definitions(${NOM_TESTBMI_NAME} PUBLIC BMI_ACTIVE NGEN_FORCING_ACTIVE NGEN_OUTPUT_ACTIVE NGEN_ACTIVE)
+	target_link_libraries(${NOM_TESTBMI_NAME} PUBLIC iso_c_bmi)
     endif()
 else()
     add_executable(${NOM_STANDALONE_EXE_NAME} ${MODEL_SOURCES} ${BMI_SOURCES} ${DRIVER_SOURCES})
