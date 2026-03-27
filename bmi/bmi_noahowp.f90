@@ -218,7 +218,8 @@ contains
     double precision, intent(out) :: time
     integer :: bmi_status
 
-    time = 0.d0
+! jbb     time = 0.d0
+    time = this%model%domain%start_datetime
     bmi_status = BMI_SUCCESS
   end function noahowp_start_time
 
@@ -228,7 +229,8 @@ contains
     double precision, intent(out) :: time
     integer :: bmi_status
 
-    time = dble(this%model%domain%ntime * this%model%domain%dt)
+! jbb    time = dble(this%model%domain%ntime * this%model%domain%dt)
+    time = this%model%domain%end_datetime
     bmi_status = BMI_SUCCESS
   end function noahowp_end_time
 
@@ -238,7 +240,8 @@ contains
     double precision, intent(out) :: time
     integer :: bmi_status
 
-    time = dble(this%model%domain%time_dbl)
+! jbb    time = dble(this%model%domain%time_dbl)
+    time = this%model%domain%curr_datetime
     bmi_status = BMI_SUCCESS
   end function noahowp_current_time
 

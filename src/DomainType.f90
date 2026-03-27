@@ -117,6 +117,7 @@ contains
     this%isltyp         = namelist%isltyp
     this%IST            = namelist%sfctyp
     this%start_datetime = date_to_unix(namelist%startdate)  ! returns seconds-since-1970-01-01
+    this%curr_datetime = this%start_datetime  
     this%end_datetime   = date_to_unix(namelist%enddate)
   
   end subroutine InitTransfer
