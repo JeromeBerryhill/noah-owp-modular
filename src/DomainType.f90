@@ -80,7 +80,7 @@ contains
     this%nowdate        = 'EMPTYDATE999'
     this%start_datetime = huge(1)
     this%end_datetime   = huge(1)
-    this%curr_datetime  = huge(1)
+    this%curr_datetime  = -1.d0      ! simulation has not started
     this%itime          = huge(1) 
     this%ntime          = huge(1) 
     this%time_dbl       = huge(1.d0)
@@ -117,7 +117,7 @@ contains
     this%isltyp         = namelist%isltyp
     this%IST            = namelist%sfctyp
     this%start_datetime = date_to_unix(namelist%startdate)  ! returns seconds-since-1970-01-01
-    this%curr_datetime = this%start_datetime  
+    ! jbb this%curr_datetime = this%start_datetime  
     this%end_datetime   = date_to_unix(namelist%enddate)
   
   end subroutine InitTransfer

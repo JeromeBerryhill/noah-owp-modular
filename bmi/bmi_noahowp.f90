@@ -616,6 +616,9 @@ contains
     case('ISNOW')
        type = "integer"
        bmi_status = BMI_SUCCESS
+    case('Start_DATE', 'END_DATE', 'TIME_STEP')
+       type = "double precision"
+       bmi_status = BMI_SUCCESS
     case default
        type = "-"
        bmi_status = BMI_FAILURE
@@ -688,6 +691,7 @@ contains
 
     associate(forcing    => this%model%forcing,   &
               water      => this%model%water,     &
+              domain     => this%model%domain,    &
               energy     => this%model%energy,    &
               parameters => this%model%parameters)
 
@@ -715,6 +719,9 @@ contains
       bmi_status = BMI_SUCCESS
     case("ECAN")
       size = sizeof(water%ECAN)            ! 'sizeof' in gcc & ifort
+      bmi_status = BMI_SUCCESS
+    case("END_TIME")
+      size = sizeof(domain%end_datetime)            ! 'sizeof' in gcc & ifort
       bmi_status = BMI_SUCCESS
     case("ETRAN")
       size = sizeof(water%etran)                ! 'sizeof' in gcc & ifort
@@ -818,11 +825,17 @@ contains
     case("SOLDN")
       size = sizeof(forcing%soldn)                ! 'sizeof' in gcc & ifort
       bmi_status = BMI_SUCCESS
+    case("START_TIME")
+      size = sizeof(domain%start_datetime)      ! 'sizeof' in gcc & ifort
+      bmi_status = BMI_SUCCESS
     case("TG")
       size = sizeof(energy%tg)            ! 'sizeof' in gcc & ifort
       bmi_status = BMI_SUCCESS
     case("TGS")
       size = sizeof(energy%tgs)            ! 'sizeof' in gcc & ifort
+      bmi_status = BMI_SUCCESS
+    case("TIME_STEP")
+      size = sizeof(domain%dt)            ! 'sizeof' in gcc & ifort
       bmi_status = BMI_SUCCESS
     case("TRAD")
       size = sizeof(energy%TRAD)            ! 'sizeof' in gcc & ifort
@@ -1353,10 +1366,36 @@ contains
 
     !==================== UPDATE IMPLEMENTATION IF NECESSARY FOR DOUBLE VARS =================
 
+    associate(domain => this%model%domain)
     select case(name)
+    case("START_TIME")
+      if(domain%curr_datetime < 1.0) then  ! simulation has not started yet
+        domain%start_datetime = src(1)
+        bmi_status = BMI_SUCCESS
+      else
+        print*,"Cannot change START_TIME after simulation has begun"
+        bmi_status = BMI_FAILURE
+      endif  
+    case("END_TIME")
+      if(domain%curr_datetime < 1.0) then  ! simulation has not started yet
+        domain%end_datetime = src(1)
+        bmi_status = BMI_SUCCESS
+      else
+        print*,"Cannot change END_TIME after simulation has begun"
+        bmi_status = BMI_FAILURE
+      endif  
+    case("TIME_STEP")
+      if(domain%curr_datetime < 1.0) then  ! simulation has not started yet
+        domain%DT = src(1)
+        bmi_status = BMI_SUCCESS
+      else
+        print*,"Cannot change TIME_STEP after simulation has begun"
+        bmi_status = BMI_FAILURE
+      endif  
     case default
        bmi_status = BMI_FAILURE
     end select
+    end associate
   end function noahowp_set_double
 
    ! Set integer values at particular locations.

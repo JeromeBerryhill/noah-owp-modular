@@ -40,6 +40,7 @@ program noahmp_driver_test
     character (len = 10)                              :: var_units        ! variable units
     integer                                           :: var_itemsize     ! memory size per var array element
     integer                                           :: var_nbytes       ! memory size over full var array
+    double precision, dimension(1)                    :: set_time         ! used for time setting functions
     double precision                                  :: timestep         ! timestep
     double precision                                  :: bmi_time         ! time output from BMI functions
     double precision                                  :: time_until       ! time to which update until should run
@@ -151,6 +152,30 @@ program noahmp_driver_test
     status = m%get_time_units(ts_units)
     print*, " The time step is ", timestep
     print*, "with a unit of ", ts_units
+
+  !---------------------------------------------------------------------
+  ! set time information
+  !---------------------------------------------------------------------
+    set_time(1) = 200000.d0
+    status = m%set_value("START_TIME", set_time)
+    print*, "Set START_TIME returns ", status
+    status = m%set_value("END_TIME", set_time)
+    print*, "Set END_TIME returns ", status
+    set_time(1) = 847.d0
+    status = m%set_value("TIME_STEP", set_time)
+    print*, "Set TIME_STEP returns ", status
+
+  !---------------------------------------------------------------------
+  ! Get time information again
+  !---------------------------------------------------------------------
+    status = m%get_start_time(bmi_time)
+    print*, "The start time is ", bmi_time
+
+    status = m%get_end_time(bmi_time)
+    print*, "The end time is ", bmi_time
+
+    status = m%get_time_step(timestep)
+    print*, " The time step is ", timestep
 
   !---------------------------------------------------------------------
   ! Run some time steps with the update_until function
