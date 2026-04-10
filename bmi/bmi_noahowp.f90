@@ -196,11 +196,11 @@ contains
     integer :: bmi_status
 
     if (len(config_file) > 0) then
-       call initialize_from_file(this%model, config_file)
+      bmi_status = initialize_from_file(this%model, config_file)
     else
+       bmi_status = BMI_FAILURE
        !call initialize_from_defaults(this%model)
     end if
-    bmi_status = BMI_SUCCESS
   end function noahowp_initialize
 
   ! BMI finalizer.
@@ -270,8 +270,7 @@ contains
     class (bmi_noahowp), intent(inout) :: this
     integer :: bmi_status
 
-    call advance_in_time(this%model)
-    bmi_status = BMI_SUCCESS
+    bmi_status = advance_in_time(this%model)
   end function noahowp_update
 
   ! Advance the model until the given time.
@@ -279,21 +278,29 @@ contains
     class (bmi_noahowp), intent(inout) :: this
     double precision, intent(in) :: time
     integer :: bmi_status
-    double precision :: n_steps_real
+    double precision :: d_advance_secs
     integer :: n_steps, i, s
 
-    if (time < this%model%domain%time_dbl) then
+    if (time <= this%model%domain%curr_datetime) then
        bmi_status = BMI_FAILURE
        return
     end if
 
-    n_steps_real = (time - this%model%domain%time_dbl) / this%model%domain%dt
-    n_steps = floor(n_steps_real)
-    do i = 1, n_steps
-       s = this%update()
-    end do
-!     call update_frac(this, n_steps_real - dble(n_steps)) ! NOT IMPLEMENTED
-    bmi_status = BMI_SUCCESS
+    d_advance_secs = (time - this%model%domain%curr_datetime)
+    if (modulo(d_advance_secs,this%model%domain%dt) == 0) then
+      n_steps = d_advance_secs/this%model%domain%dt
+      do i = 1, n_steps
+        s = this%update()
+        if (s == BMI_FAILURE) then
+          bmi_status = BMI_FAILURE
+          return
+        end if      
+      end do
+      bmi_status = BMI_SUCCESS
+    else
+      print*,"noah-owp-modular does not support fractional time steps"
+      bmi_status = BMI_FAILURE
+    end if  
   end function noahowp_update_until
 
   ! Get the grid id for a particular variable.
@@ -1369,7 +1376,7 @@ contains
     associate(domain => this%model%domain)
     select case(name)
     case("START_TIME")
-      if(domain%curr_datetime < 1.0) then  ! simulation has not started yet
+      if(domain%itime == 0) then  ! simulation has not started yet
         domain%start_datetime = src(1)
         bmi_status = BMI_SUCCESS
       else
@@ -1377,7 +1384,7 @@ contains
         bmi_status = BMI_FAILURE
       endif  
     case("END_TIME")
-      if(domain%curr_datetime < 1.0) then  ! simulation has not started yet
+      if(domain%itime == 0) then  ! simulation has not started yet
         domain%end_datetime = src(1)
         bmi_status = BMI_SUCCESS
       else
@@ -1385,7 +1392,7 @@ contains
         bmi_status = BMI_FAILURE
       endif  
     case("TIME_STEP")
-      if(domain%curr_datetime < 1.0) then  ! simulation has not started yet
+      if(domain%itime == 0) then  ! simulation has not started yet
         domain%DT = src(1)
         bmi_status = BMI_SUCCESS
       else

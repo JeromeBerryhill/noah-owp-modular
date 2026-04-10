@@ -154,34 +154,66 @@ program noahmp_driver_test
     print*, "with a unit of ", ts_units
 
   !---------------------------------------------------------------------
-  ! set time information
+  ! set bad time information
   !---------------------------------------------------------------------
     set_time(1) = 200000.d0
     status = m%set_value("START_TIME", set_time)
     print*, "Set START_TIME returns ", status
     status = m%set_value("END_TIME", set_time)
     print*, "Set END_TIME returns ", status
+  
+  !---------------------------------------------------------------------
+  ! Run update with bad time step
+  !---------------------------------------------------------------------
+    status = m%update()
+    if (status == BMI_SUCCESS) then
+      print*,"update allowed start_time = end_time step"
+    else
+      print*,"bad simultion times correctly detected"
+    end if  
+    
+  !---------------------------------------------------------------------
+  ! fix bad start time 
+  !---------------------------------------------------------------------
+    set_time(1) = 100000.d0
+    status = m%set_value("START_TIME", set_time)
+    
+  !---------------------------------------------------------------------
+  ! set  bad time step 
+  !---------------------------------------------------------------------
     set_time(1) = 847.d0
     status = m%set_value("TIME_STEP", set_time)
     print*, "Set TIME_STEP returns ", status
 
   !---------------------------------------------------------------------
-  ! Get time information again
+  ! Run update with bad time step
   !---------------------------------------------------------------------
-    status = m%get_start_time(bmi_time)
-    print*, "The start time is ", bmi_time
+    status = m%update()
+    if (status == BMI_SUCCESS) then
+      print*,"update allowed incompatible interval and time step"
+    end if  
+    
+  !---------------------------------------------------------------------
+  ! Fix time step
+  !---------------------------------------------------------------------
+    set_time(1) = 1000.d0
+    status = m%set_value("TIME_STEP", set_time)
 
-    status = m%get_end_time(bmi_time)
-    print*, "The end time is ", bmi_time
-
-    status = m%get_time_step(timestep)
-    print*, " The time step is ", timestep
+  !---------------------------------------------------------------------
+  ! Run update_until with bad target date (not integer number of time steps)
+  !---------------------------------------------------------------------
+    time_until = 200598.0
+    status = m%update_until(time_until)
+    if (status == BMI_SUCCESS) then
+      print*,"update_until allowed a bad target time"
+    end if
 
   !---------------------------------------------------------------------
   ! Run some time steps with the update_until function
   !---------------------------------------------------------------------
-    time_until = 36000.0
+    time_until = 36000.0    
     status = m%update_until(time_until)
+    print*,"update_until returns ", status
     
   !---------------------------------------------------------------------
   ! Run the rest of the time with update in a loop
