@@ -33,12 +33,12 @@ Regardless, if necessary just append `FC=<path_to_compiler>` to the rest of the 
 FC=/opt/local/bin/gfortran-mp-14 cmake -B cmake_build -S .
 ```
 
-With the build directory generated, build the stand-alone executable:
+With the build directory generated, build the standalone executable:
 ```bash
 cmake --build cmake_build --target noah_owp_modular.exe
 ```
 
-You should now see the `cmake_build/noah_owp_modular.exe` stand-alone executable. 
+You should now see the `cmake_build/noah_owp_modular.exe` standalone executable. 
 
 You can test the executable using the namelist.input file from the run subdirectory;
 ```bash
@@ -52,7 +52,7 @@ You can examine model output in the `/data/output.nc` file (requires [Panoply](h
 
 The noah-owp-modular model code can also be built as a shared library, accessible using BNI. In particular, this is necessary to run the noah-owp-modular model in the [Next Generation Water Resources Modeling Framework](https://github.com/NOAA-OWP/ngen).
 
-As described above for stand-alone builds, clone the repo if necessary and change into the repo root directory;
+As described above for standalone builds, clone the repo if necessary and change into the repo root directory;
 ```bash
 git clone https://github.com/NOAA-OWP/noah-owp-modular.git
 cd noah-owp-modular
