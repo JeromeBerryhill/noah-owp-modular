@@ -11,7 +11,7 @@ git clone https://github.com/NOAA-OWP/noah-owp-modular.git
 cd noah-owp-modular
 ```
 
-The STandalone version of noah-owp-modular requires Netcdf for FORTRAN. This may be an installed resource, or provided by a module, depending on the platform.
+The Standalone version of noah-owp-modular requires Netcdf for FORTRAN. This may be an installed resource, or provided by a module, depending on the platform.
 
 The path to the Netcdf library is passed to CMake using the NETCDF environment variable;
 ```bash
@@ -58,7 +58,7 @@ git clone https://github.com/NOAA-OWP/noah-owp-modular.git
 cd noah-owp-modular
 ```
 
-The shared library requires the iso_c_fortran_bmi bindings(https://github.com/NOAA-OWP/iso_c_fortran_bmi). There are two ways to provide this to CMake. It can simply be placed in a directory at the same level as the noah-owp-modular repo, like this;
+The shared library requires the iso_c_fortran_bmi bindings (https://github.com/NOAA-OWP/iso_c_fortran_bmi). There are two ways to provide this to CMake. It can simply be placed in a directory at the same level as the noah-owp-modular repo, like this;
 ```bash
 >$ ls
 iso_c_fortran_bmi  noah-owp-modular 
