@@ -27,6 +27,7 @@ contains
     integer  :: idt ! change in time since beginning of run (in minutes)
     idt = itime * (domain%dt / 60)
 
+
     ! calculate current 'nowdate' from start date + integer length of run to current time
     call geth_newdate(domain%startdate, idt, &  ! in
                       domain%nowdate)           ! out
@@ -848,7 +849,6 @@ contains
     REAL            :: svz     ! z value of solar vector
     
     ! ------------------------ end local variables ---------------------------
-
     ! Determine the number of days in the year
     read(nowdate(1:4), '(I4)') iyear
     yearlen = 365

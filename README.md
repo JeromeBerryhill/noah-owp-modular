@@ -10,9 +10,11 @@ Noah-OWP-Modular is in active development. Check back often for project updates.
 
 Noah-OWP-Modular has been tested on Unix-based systems such as MacOS and Linux. Its only dependency is NetCDF.
 
-## Installation and Configuration
+## Install and Run
 
-Detailed instructions on how to install, configure, and run Noah-OWP-Modular can be found in our [INSTALL](INSTALL.md) guide.
+Instructions for building and running Noah-OWP-Modular using CMake can be found in our [CMAKE_INSTALL](CMAKE_INSTALL.md) guide.
+
+Older instructions for installing, configuring and running using make can be found in the [INSTALL](INSTALL.md) guide. These are deprecated, but are retained for information purposes, as they cover certain specific platforms.
 
 ## Usage
 

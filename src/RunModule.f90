@@ -34,12 +34,12 @@ contains
 
   !== Initialize the model ================================================================================
 
-  SUBROUTINE initialize_from_file (model, config_filename)
+  FUNCTION initialize_from_file (model, config_filename) result (bmi_status)
     implicit none
     
+    integer                                 :: bmi_status    ! return value for BMI
     type(noahowp_type), target, intent(out) :: model
     character(len=*), intent (in)           :: config_filename    ! config file from command line argument
-    integer             :: forcing_timestep         ! integer time step (set to dt) for some subroutine calls
     
     associate(namelist   => model%namelist,   &
               levels     => model%levels,     &
@@ -186,44 +186,89 @@ contains
       domain%zsnso(1:namelist%nsoil)    = namelist%zsoil
      
       ! time variables
-      domain%nowdate   = domain%startdate ! start the model with nowdate = startdate
-      forcing_timestep = domain%dt        ! integer timestep for some subroutine calls
-      domain%itime     = 1                ! initialize the time loop counter at 1
       domain%time_dbl  = 0.d0             ! start model run at t = 0
-      
-      !---------------------------------------------------------------------
-      !--- set a time vector for simulation ---
-      !---------------------------------------------------------------------
-      ! --- AWW:  calculate start and end utimes & records for requested station data read period ---
-      call get_utime_list (domain%start_datetime, domain%end_datetime, domain%dt, domain%sim_datetimes)  ! makes unix-time list for desired records (end-of-timestep)
-      domain%ntime = size (domain%sim_datetimes)   
-      !print *, "---------"; 
-      !print *, 'Simulation startdate = ', domain%startdate, ' enddate = ', domain%enddate, ' dt(sec) = ', domain%dt, ' ntimes = ', domain%ntime  ! YYYYMMDD dates
-      !print *, "---------"
-      
-      !---------------------------------------------------------------------
-      ! Open the forcing file
-      ! Code adapted from the ASCII_IO from NOAH-MP V1.1
-      ! Compiler directive NGEN_FORCING_ACTIVE to be defined if 
-      ! Nextgen forcing is being used (https://github.com/NOAA-OWP/ngen)
-      !---------------------------------------------------------------------
-#ifndef NGEN_FORCING_ACTIVE
-      call open_forcing_file(namelist%forcing_filename)
-#endif
-      
-      !---------------------------------------------------------------------
-      ! create output file and add initial values
-      ! Compiler directive NGEN_OUTPUT_ACTIVE to be defined if 
-      ! Nextgen is writing model output (https://github.com/NOAA-OWP/ngen)
-      !---------------------------------------------------------------------
-#ifndef NGEN_OUTPUT_ACTIVE
-      call initialize_output(namelist%output_filename, domain%ntime, levels%nsoil, levels%nsnow)
-#endif
-      
+
+      bmi_status = 0  !  BMI_SUCCESS      
     end associate ! terminate the associate block
 
-  END SUBROUTINE initialize_from_file   
+  END FUNCTION initialize_from_file   
   
+  !== initialize simulation timing variables  ==========================================================
+
+  FUNCTION init_time(model) result (bmi_status)
+    integer                                 :: bmi_status    ! return value for BMI
+    type(noahowp_type), intent(inout) :: model
+    
+    real*8                                  :: run_seconds
+    integer            :: curr_yr, curr_mo, curr_dy, curr_hr, curr_min, curr_sec  ! current UNIX timestep details
+    associate(namelist   => model%namelist,   &
+              levels     => model%levels,     &
+              domain     => model%domain)
+  
+   ! validate time settings
+    run_seconds = domain%end_datetime - domain%start_datetime
+    if (run_seconds <= 0.0) then
+      print*,"End date = ", domain%end_datetime, " must be later than start date", domain%start_datetime
+      bmi_status = 1 ! BMI_FAILURE
+      return
+    end if  
+
+    if (domain%dt <= 0.0) then
+      print*,"Time step must be greater than zero"
+      bmi_status = 1  ! BMI_FAILURE
+      return
+    end if  
+
+    if (abs(modulo(run_seconds,domain%dt)) > 1.0e-10) then
+      print*,"End date - start date must be an integer number of time steps"
+      bmi_status = 1  ! BMI_FAILURE
+      return
+    end if  
+
+   ! time variables - values from namelist may have been over-written by BMI functions.
+
+    call unix_to_date (domain%start_datetime, curr_yr, curr_mo, curr_dy, curr_hr, curr_min, curr_sec)
+    write(domain%startdate, '(I4.4,I2.2,I2.2,I2.2,I2.2)'),curr_yr, curr_mo, curr_dy, curr_hr, curr_min
+    call unix_to_date (domain%end_datetime, curr_yr, curr_mo, curr_dy, curr_hr, curr_min, curr_sec)
+    write(domain%enddate, '(I4.4,I2.2,I2.2,I2.2,I2.2)'),curr_yr, curr_mo, curr_dy, curr_hr, curr_min
+    domain%nowdate = domain%startdate ! start the model with nowdate = startdate
+    domain%time_dbl  = 0.d0             ! start model run at t = 0
+    domain%itime     = 1                ! initialize the time loop counter at 1 - signifying init has run
+          
+   !---------------------------------------------------------------------
+   !--- set a time vector for simulation ---
+   !---------------------------------------------------------------------
+   ! --- AWW:  calculate start and end utimes & records for requested station data read period ---
+   call get_utime_list (domain%start_datetime, domain%end_datetime, domain%dt, domain%sim_datetimes)  ! makes unix-time list for desired records (end-of-timestep)
+   domain%ntime = size (domain%sim_datetimes)   
+   domain%curr_datetime = domain%sim_datetimes(1)     ! set current time to first time step
+
+   !print *, "---------"; 
+   !print *, 'Simulation startdate = ', domain%startdate, ' enddate = ', domain%enddate, ' dt(sec) = ', domain%dt, ' ntimes = ', domain%ntime  ! YYYYMMDD dates
+   !print *, "---------"
+
+   !---------------------------------------------------------------------
+   ! Open the forcing file
+   ! Code adapted from the ASCII_IO from NOAH-MP V1.1
+   ! Compiler directive NGEN_FORCING_ACTIVE to be defined if 
+   ! Nextgen forcing is being used (https://github.com/NOAA-OWP/ngen)
+   !---------------------------------------------------------------------
+#ifndef NGEN_FORCING_ACTIVE
+   call open_forcing_file(namelist%forcing_filename)
+#endif
+      
+   !---------------------------------------------------------------------
+   ! create output file and add initial values
+   ! Compiler directive NGEN_OUTPUT_ACTIVE to be defined if 
+   ! Nextgen is writing model output (https://github.com/NOAA-OWP/ngen)
+   !---------------------------------------------------------------------
+#ifndef NGEN_OUTPUT_ACTIVE
+    call initialize_output(namelist%output_filename, domain%ntime, levels%nsoil, levels%nsnow)
+#endif
+    bmi_status = 0  ! BMI_SUCCESS
+  end associate     
+  END FUNCTION init_time
+
   !== Finalize the model ================================================================================
 
   SUBROUTINE cleanup(model)
@@ -242,19 +287,27 @@ contains
 
   !== Move the model ahead one time step ================================================================
 
-  SUBROUTINE advance_in_time(model)
+  FUNCTION advance_in_time(model) result (bmi_status)
     type (noahowp_type), intent (inout) :: model
+    integer :: bmi_status        
 
-    call solve_noahowp(model)
+    if (model%domain%itime == 0) then
+      bmi_status = init_time(model)
+      if (bmi_status == 1) then  ! BMI_FAILURE
+        return
+      end if
+    end if      
+    bmi_status = solve_noahowp(model)
 
     model%domain%itime    = model%domain%itime + 1 ! increment the integer time by 1
     model%domain%time_dbl = dble(model%domain%time_dbl + model%domain%dt) ! increment model time in seconds by DT
-  END SUBROUTINE advance_in_time
+  END FUNCTION advance_in_time
   
   !== Run one time step of the model ================================================================
 
-  SUBROUTINE solve_noahowp(model)
+  FUNCTION solve_noahowp(model) result (bmi_status)
     type (noahowp_type), intent (inout) :: model
+    integer            :: bmi_status
     integer, parameter :: iunit        = 10 ! Fortran unit number to attach to the opened file
     integer            :: forcing_timestep  ! integer time step (set to dt) for some subroutine calls
     integer            :: ierr              ! error code for reading forcing data
@@ -323,8 +376,8 @@ contains
 #ifndef NGEN_OUTPUT_ACTIVE
     call add_to_output(domain, water, energy, forcing, domain%itime, levels%nsoil,levels%nsnow)
 #endif
-    
+    bmi_status = 0  ! BMI_SUCCESS 
     end associate ! terminate associate block
-  END SUBROUTINE solve_noahowp
+  END FUNCTION solve_noahowp
 
 end module RunModule

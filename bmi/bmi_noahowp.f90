@@ -196,11 +196,11 @@ contains
     integer :: bmi_status
 
     if (len(config_file) > 0) then
-       call initialize_from_file(this%model, config_file)
+      bmi_status = initialize_from_file(this%model, config_file)
     else
+       bmi_status = BMI_FAILURE
        !call initialize_from_defaults(this%model)
     end if
-    bmi_status = BMI_SUCCESS
   end function noahowp_initialize
 
   ! BMI finalizer.
@@ -218,7 +218,8 @@ contains
     double precision, intent(out) :: time
     integer :: bmi_status
 
-    time = 0.d0
+! jbb     time = 0.d0
+    time = this%model%domain%start_datetime
     bmi_status = BMI_SUCCESS
   end function noahowp_start_time
 
@@ -228,7 +229,8 @@ contains
     double precision, intent(out) :: time
     integer :: bmi_status
 
-    time = dble(this%model%domain%ntime * this%model%domain%dt)
+! jbb    time = dble(this%model%domain%ntime * this%model%domain%dt)
+    time = this%model%domain%end_datetime
     bmi_status = BMI_SUCCESS
   end function noahowp_end_time
 
@@ -238,7 +240,8 @@ contains
     double precision, intent(out) :: time
     integer :: bmi_status
 
-    time = dble(this%model%domain%time_dbl)
+! jbb    time = dble(this%model%domain%time_dbl)
+    time = this%model%domain%curr_datetime
     bmi_status = BMI_SUCCESS
   end function noahowp_current_time
 
@@ -267,8 +270,7 @@ contains
     class (bmi_noahowp), intent(inout) :: this
     integer :: bmi_status
 
-    call advance_in_time(this%model)
-    bmi_status = BMI_SUCCESS
+    bmi_status = advance_in_time(this%model)
   end function noahowp_update
 
   ! Advance the model until the given time.
@@ -276,21 +278,29 @@ contains
     class (bmi_noahowp), intent(inout) :: this
     double precision, intent(in) :: time
     integer :: bmi_status
-    double precision :: n_steps_real
+    double precision :: d_advance_secs
     integer :: n_steps, i, s
 
-    if (time < this%model%domain%time_dbl) then
+    if (time <= this%model%domain%curr_datetime) then
        bmi_status = BMI_FAILURE
        return
     end if
 
-    n_steps_real = (time - this%model%domain%time_dbl) / this%model%domain%dt
-    n_steps = floor(n_steps_real)
-    do i = 1, n_steps
-       s = this%update()
-    end do
-!     call update_frac(this, n_steps_real - dble(n_steps)) ! NOT IMPLEMENTED
-    bmi_status = BMI_SUCCESS
+    d_advance_secs = (time - this%model%domain%curr_datetime)
+    if (modulo(d_advance_secs,this%model%domain%dt) == 0) then
+      n_steps = d_advance_secs/this%model%domain%dt
+      do i = 1, n_steps
+        s = this%update()
+        if (s == BMI_FAILURE) then
+          bmi_status = BMI_FAILURE
+          return
+        end if      
+      end do
+      bmi_status = BMI_SUCCESS
+    else
+      print*,"noah-owp-modular does not support fractional time steps"
+      bmi_status = BMI_FAILURE
+    end if  
   end function noahowp_update_until
 
   ! Get the grid id for a particular variable.
@@ -613,6 +623,9 @@ contains
     case('ISNOW')
        type = "integer"
        bmi_status = BMI_SUCCESS
+    case('Start_DATE', 'END_DATE', 'TIME_STEP')
+       type = "double precision"
+       bmi_status = BMI_SUCCESS
     case default
        type = "-"
        bmi_status = BMI_FAILURE
@@ -685,6 +698,7 @@ contains
 
     associate(forcing    => this%model%forcing,   &
               water      => this%model%water,     &
+              domain     => this%model%domain,    &
               energy     => this%model%energy,    &
               parameters => this%model%parameters)
 
@@ -712,6 +726,9 @@ contains
       bmi_status = BMI_SUCCESS
     case("ECAN")
       size = sizeof(water%ECAN)            ! 'sizeof' in gcc & ifort
+      bmi_status = BMI_SUCCESS
+    case("END_TIME")
+      size = sizeof(domain%end_datetime)            ! 'sizeof' in gcc & ifort
       bmi_status = BMI_SUCCESS
     case("ETRAN")
       size = sizeof(water%etran)                ! 'sizeof' in gcc & ifort
@@ -815,11 +832,17 @@ contains
     case("SOLDN")
       size = sizeof(forcing%soldn)                ! 'sizeof' in gcc & ifort
       bmi_status = BMI_SUCCESS
+    case("START_TIME")
+      size = sizeof(domain%start_datetime)      ! 'sizeof' in gcc & ifort
+      bmi_status = BMI_SUCCESS
     case("TG")
       size = sizeof(energy%tg)            ! 'sizeof' in gcc & ifort
       bmi_status = BMI_SUCCESS
     case("TGS")
       size = sizeof(energy%tgs)            ! 'sizeof' in gcc & ifort
+      bmi_status = BMI_SUCCESS
+    case("TIME_STEP")
+      size = sizeof(domain%dt)            ! 'sizeof' in gcc & ifort
       bmi_status = BMI_SUCCESS
     case("TRAD")
       size = sizeof(energy%TRAD)            ! 'sizeof' in gcc & ifort
@@ -1350,10 +1373,36 @@ contains
 
     !==================== UPDATE IMPLEMENTATION IF NECESSARY FOR DOUBLE VARS =================
 
+    associate(domain => this%model%domain)
     select case(name)
+    case("START_TIME")
+      if(domain%itime == 0) then  ! simulation has not started yet
+        domain%start_datetime = src(1)
+        bmi_status = BMI_SUCCESS
+      else
+        print*,"Cannot change START_TIME after simulation has begun"
+        bmi_status = BMI_FAILURE
+      endif  
+    case("END_TIME")
+      if(domain%itime == 0) then  ! simulation has not started yet
+        domain%end_datetime = src(1)
+        bmi_status = BMI_SUCCESS
+      else
+        print*,"Cannot change END_TIME after simulation has begun"
+        bmi_status = BMI_FAILURE
+      endif  
+    case("TIME_STEP")
+      if(domain%itime == 0) then  ! simulation has not started yet
+        domain%DT = src(1)
+        bmi_status = BMI_SUCCESS
+      else
+        print*,"Cannot change TIME_STEP after simulation has begun"
+        bmi_status = BMI_FAILURE
+      endif  
     case default
        bmi_status = BMI_FAILURE
     end select
+    end associate
   end function noahowp_set_double
 
    ! Set integer values at particular locations.
